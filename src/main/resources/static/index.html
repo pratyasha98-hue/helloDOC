@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Healthcare Appointment System</title>
+<style>
+  :root {
+    --primary: #1a6fc4;
+    --primary-dark: #145da0;
+    --accent: #e8f4fd;
+    --success: #27ae60;
+    --warning: #e67e22;
+    --danger: #e74c3c;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #2c3e50;
+    --muted: #7f8c8d;
+    --border: #dde3ea;
+    --sidebar-w: 220px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w); background: #0f2d55; color: #fff;
+    display: flex; flex-direction: column; position: fixed; top: 0; left: 0; height: 100vh; z-index: 100;
+  }
+  #sidebar .logo {
+    padding: 22px 18px 18px; font-size: 15px; font-weight: 700;
+    border-bottom: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; gap: 10px;
+  }
+  #sidebar .logo span { font-size: 22px; }
+  #sidebar nav { flex: 1; overflow-y: auto; padding: 12px 0; }
+  #sidebar nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 20px; color: rgba(255,255,255,.75); text-decoration: none;
+    font-size: 13.5px; transition: background .18s, color .18s; cursor: pointer;
+  }
+  #sidebar nav a:hover, #sidebar nav a.active {
+    background: rgba(255,255,255,.1); color: #fff;
+  }
+  #sidebar nav a .ico { font-size: 17px; width: 22px; text-align: center; }
+
+  /* ── Main ── */
+  #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  #topbar {
+    background: var(--card); border-bottom: 1px solid var(--border);
+    padding: 14px 28px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 50;
+  }
+  #topbar h1 { font-size: 18px; font-weight: 600; color: var(--primary); }
+  #topbar .badge { background: var(--primary); color: #fff; padding: 3px 11px; border-radius: 20px; font-size: 12px; }
+  #content { padding: 28px; flex: 1; }
+
+  /* ── Cards ── */
+  .card { background: var(--card); border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.07); padding: 22px; margin-bottom: 22px; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+
+  /* ── Dashboard stats ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card); border-radius: 10px; padding: 20px 18px;
+    box-shadow: 0 1px 6px rgba(0,0,0,.07); border-left: 4px solid var(--primary);
+  }
+  .stat-card.green { border-left-color: var(--success); }
+  .stat-card.orange { border-left-color: var(--warning); }
+  .stat-card.red { border-left-color: var(--danger); }
+  .stat-card .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .stat-card .value { font-size: 28px; font-weight: 700; margin-top: 6px; }
+
+  /* ── Tables ── */
+  .tbl-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { background: var(--accent); color: var(--primary-dark); font-weight: 600; padding: 10px 13px; text-align: left; white-space: nowrap; }
+  td { padding: 9px 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr:hover td { background: #f8fbff; }
+
+  /* ── Badges ── */
+  .badge-pill {
+    display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 600;
+  }
+  .badge-booked   { background: #d4edff; color: #0066cc; }
+  .badge-completed{ background: #d5f5e3; color: #1a7a44; }
+  .badge-cancelled{ background: #fde8e8; color: #c0392b; }
+  .badge-paid     { background: #d5f5e3; color: #1a7a44; }
+  .badge-pending  { background: #fef9e7; color: #b7770d; }
+  .badge-emergency{ background: #fde8e8; color: #c0392b; font-size: 11px; }
+
+  /* ── Buttons ── */
+  .btn { padding: 7px 15px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: opacity .18s; display: inline-flex; align-items: center; gap: 5px; }
+  .btn:hover { opacity: .85; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-success { background: var(--success); color: #fff; }
+  .btn-warning { background: var(--warning); color: #fff; }
+  .btn-danger  { background: var(--danger);  color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+
+  /* ── Forms ── */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group label { font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .form-group input, .form-group select, .form-group textarea {
+    padding: 8px 11px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13.5px; outline: none; transition: border .18s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+  .form-group textarea { resize: vertical; min-height: 60px; }
+  .form-actions { margin-top: 16px; display: flex; gap: 10px; }
+
+  /* ── Search bar ── */
+  .search-bar { display: flex; gap: 10px; margin-bottom: 18px; }
+  .search-bar input { flex: 1; padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px; font-size: 13.5px; outline: none; }
+  .search-bar input:focus { border-color: var(--primary); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: #2c3e50; color: #fff; padding: 12px 22px; border-radius: 8px;
+    font-size: 13.5px; z-index: 9999; display: none; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+  }
+  #toast.show { display: block; animation: fadein .3s; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .modal {
+    background: #fff; border-radius: 12px; padding: 28px; width: 90%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,.2);
+  }
+  .modal h3 { font-size: 16px; margin-bottom: 18px; color: var(--primary); }
+  .modal-close { float: right; cursor: pointer; font-size: 20px; line-height: 1; color: var(--muted); }
+
+  /* ── Section toggle ── */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* ── Responsive ── */
+  @media(max-width: 768px) {
+    #sidebar { width: 55px; }
+    #sidebar nav a span:not(.ico) { display: none; }
+    #sidebar .logo small { display: none; }
+    #main { margin-left: 55px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<div id="sidebar">
+  <div class="logo"><span>🏥</span><small> HelloDoc </small></div>
+  <nav>
+    <a class="active" onclick="showSection('dashboard')"><span class="ico">📊</span><span>Dashboard</span></a>
+    <a onclick="showSection('patients')"><span class="ico">🧑‍⚕️</span><span>Patients</span></a>
+    <a onclick="showSection('doctors')"><span class="ico">👨‍⚕️</span><span>Doctors</span></a>
+    <a onclick="showSection('departments')"><span class="ico">🏢</span><span>Departments</span></a>
+    <a onclick="showSection('appointments')"><span class="ico">📅</span><span>Appointments</span></a>
+    <a onclick="showSection('emergency')"><span class="ico">🚨</span><span>Emergency</span></a>
+    <a onclick="showSection('prescriptions')"><span class="ico">💊</span><span>Prescriptions</span></a>
+    <a onclick="showSection('billing')"><span class="ico">💳</span><span>Billing</span></a>
+    <a onclick="showSection('reports')"><span class="ico">📈</span><span>Reports</span></a>
+  </nav>
+</div>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div id="main">
+  <div id="topbar">
+    <h1 id="page-title">Dashboard</h1>
+    <span class="badge" id="topbar-date"></span>
+  </div>
+
+  <div id="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div id="sec-dashboard" class="section active">
+      <div class="stats-grid" id="stats-grid">
+        <div class="stat-card"><div class="label">Total Patients</div><div class="value" id="stat-patients">…</div></div>
+        <div class="stat-card green"><div class="label">Total Doctors</div><div class="value" id="stat-doctors">…</div></div>
+        <div class="stat-card orange"><div class="label">Appointments Today</div><div class="value" id="stat-today">…</div></div>
+        <div class="stat-card red"><div class="label">Emergencies</div><div class="value" id="stat-emergency">…</div></div>
+        <div class="stat-card green"><div class="label">Revenue Collected</div><div class="value" id="stat-revenue">…</div></div>
+        <div class="stat-card orange"><div class="label">Pending Dues</div><div class="value" id="stat-pending">…</div></div>
+      </div>
+      <div class="card">
+        <h2>📅 Today's Appointments</h2>
+        <div class="tbl-wrap"><table id="tbl-today"><thead><tr><th>Token</th><th>Patient</th><th>Doctor</th><th>Time</th><th>Status</th><th>Emergency</th></tr></thead><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- ── PATIENTS ── -->
+    <div id="sec-patients" class="section">
+      <div class="card">
+        <h2>➕ Add / Edit Patient</h2>
+        <input type="hidden" id="pat-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name</label><input id="pat-name" placeholder="e.g. Ritesh Reddy"/></div>
+          <div class="form-group"><label>Age</label><input id="pat-age" type="number" placeholder="25"/></div>
+          <div class="form-group"><label>Gender</label>
+            <select id="pat-gender"><option value="">Select…</option><option>Male</option><option>Female</option><option>Other</option></select>
+          </div>
+          <div class="form-group"><label>Phone</label><input id="pat-phone" placeholder="9876543210"/></div>
+          <div class="form-group"><label>City</label><input id="pat-city" placeholder="Mumbai"/></div>
+          <div class="form-group"><label>Medical History</label><input id="pat-history" placeholder="Diabetes, Asthma…"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="savePatient()">💾 Save Patient</button>
+          <button class="btn btn-outline" onclick="clearPatientForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🧑‍⚕️ All Patients</h2>
+        <div class="search-bar">
+          <input id="pat-search" placeholder="Search by name, city or condition…" oninput="searchPatients()"/>
+          <button class="btn btn-primary" onclick="loadPatients()">🔄 Refresh</button>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-patients">
+          <thead><tr><th>ID</th><th>Name</th><th>Age</th><th>Gender</th><th>Phone</th><th>City</th><th>History</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── DOCTORS ── -->
+    <div id="sec-doctors" class="section">
+      <div class="card">
+        <h2>➕ Add / Edit Doctor</h2>
+        <input type="hidden" id="doc-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Full Name</label><input id="doc-name" placeholder="Dr. Aditya Nayak"/></div>
+          <div class="form-group"><label>Specialization</label><input id="doc-spec" placeholder="Cardiology"/></div>
+          <div class="form-group"><label>Department</label>
+            <select id="doc-dept"><option value="">Select Department…</option></select>
+          </div>
+          <div class="form-group"><label>Consultation Fee (₹)</label><input id="doc-fee" type="number" placeholder="500"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveDoctor()">💾 Save Doctor</button>
+          <button class="btn btn-outline" onclick="clearDoctorForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>👨‍⚕️ All Doctors</h2>
+        <div class="search-bar">
+          <input id="doc-search" placeholder="Search by name or specialization…" oninput="searchDoctors()"/>
+          <button class="btn btn-primary" onclick="loadDoctors()">🔄 Refresh</button>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-doctors">
+          <thead><tr><th>ID</th><th>Name</th><th>Specialization</th><th>Department</th><th>Fee (₹)</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── DEPARTMENTS ── -->
+    <div id="sec-departments" class="section">
+      <div class="card">
+        <h2>➕ Add / Edit Department</h2>
+        <input type="hidden" id="dept-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Department Name</label><input id="dept-name" placeholder="Cardiology"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveDepartment()">💾 Save</button>
+          <button class="btn btn-outline" onclick="clearDeptForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>🏢 All Departments</h2>
+        <div class="tbl-wrap"><table id="tbl-departments">
+          <thead><tr><th>ID</th><th>Name</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── APPOINTMENTS ── -->
+    <div id="sec-appointments" class="section">
+      <div class="card">
+        <h2>➕ Book Appointment</h2>
+        <input type="hidden" id="apt-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Patient</label>
+            <select id="apt-patient"><option value="">Select Patient…</option></select>
+          </div>
+          <div class="form-group"><label>Doctor</label>
+            <select id="apt-doctor"><option value="">Select Doctor…</option></select>
+          </div>
+          <div class="form-group"><label>Date</label><input id="apt-date" type="date"/></div>
+          <div class="form-group"><label>Time</label><input id="apt-time" type="time"/></div>
+          <div class="form-group"><label>Status</label>
+            <select id="apt-status"><option>Booked</option><option>Completed</option><option>Cancelled</option></select>
+          </div>
+          <div class="form-group"><label>Emergency?</label>
+            <select id="apt-emergency"><option value="No">No</option><option value="Yes">Yes 🚨</option></select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveAppointment()">📅 Book Appointment</button>
+          <button class="btn btn-outline" onclick="clearAptForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📋 All Appointments</h2>
+        <div class="search-bar">
+          <input id="apt-date-filter" type="date" style="max-width:180px"/>
+          <button class="btn btn-primary btn-sm" onclick="filterByDate()">Filter Date</button>
+          <button class="btn btn-outline btn-sm" onclick="loadAppointments()">Show All</button>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-appointments">
+          <thead><tr><th>ID</th><th>Token</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Emergency</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── EMERGENCY ── -->
+    <div id="sec-emergency" class="section">
+      <div class="card">
+        <h2>🚨 Emergency Appointments</h2>
+        <div class="tbl-wrap"><table id="tbl-emergency">
+          <thead><tr><th>ID</th><th>Token</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── PRESCRIPTIONS ── -->
+    <div id="sec-prescriptions" class="section">
+      <div class="card">
+        <h2>➕ Add Prescription</h2>
+        <input type="hidden" id="rx-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Appointment ID</label><input id="rx-apt" type="number" placeholder="Appointment ID"/></div>
+          <div class="form-group"><label>Medicine Name</label><input id="rx-med" placeholder="Aspirin"/></div>
+          <div class="form-group"><label>Dosage</label><input id="rx-dosage" placeholder="1x daily after food"/></div>
+          <div class="form-group"><label>Notes</label><input id="rx-notes" placeholder="Take as prescribed"/></div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="savePrescription()">💊 Save Prescription</button>
+          <button class="btn btn-outline" onclick="clearRxForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>💊 All Prescriptions</h2>
+        <div class="search-bar">
+          <input id="rx-apt-filter" type="number" placeholder="Filter by Appointment ID…" style="max-width:220px"/>
+          <button class="btn btn-primary btn-sm" onclick="filterRxByApt()">Filter</button>
+          <button class="btn btn-outline btn-sm" onclick="loadPrescriptions()">Show All</button>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-prescriptions">
+          <thead><tr><th>ID</th><th>Appt ID</th><th>Medicine</th><th>Dosage</th><th>Notes</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── BILLING ── -->
+    <div id="sec-billing" class="section">
+      <div class="card">
+        <h2>➕ Add Bill</h2>
+        <input type="hidden" id="bill-id"/>
+        <div class="form-grid">
+          <div class="form-group"><label>Appointment ID</label><input id="bill-apt" type="number" placeholder="Appointment ID"/></div>
+          <div class="form-group"><label>Amount (₹)</label><input id="bill-amount" type="number" placeholder="500"/></div>
+          <div class="form-group"><label>Payment Status</label>
+            <select id="bill-status"><option>Pending</option><option>Paid</option></select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-primary" onclick="saveBill()">💳 Save Bill</button>
+          <button class="btn btn-outline" onclick="clearBillForm()">✖ Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>💳 All Bills</h2>
+        <div class="search-bar">
+          <select id="bill-status-filter" style="padding:8px 11px; border:1px solid var(--border); border-radius:6px; font-size:13.5px;">
+            <option value="">All Statuses</option><option>Paid</option><option>Pending</option>
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="filterBillsByStatus()">Filter</button>
+          <button class="btn btn-outline btn-sm" onclick="loadBilling()">Show All</button>
+        </div>
+        <div class="tbl-wrap"><table id="tbl-billing">
+          <thead><tr><th>Bill ID</th><th>Appt ID</th><th>Patient</th><th>Doctor</th><th>Date</th><th>Amount (₹)</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── REPORTS ── -->
+    <div id="sec-reports" class="section">
+      <div class="stats-grid" id="report-revenue-stats" style="margin-bottom:24px"></div>
+      <div class="card">
+        <h2>📊 Appointment Status Breakdown</h2>
+        <div class="tbl-wrap"><table id="tbl-status-report">
+          <thead><tr><th>Status</th><th>Count</th></tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h2>👨‍⚕️ Doctor Workload</h2>
+        <div class="tbl-wrap"><table id="tbl-workload">
+          <thead><tr><th>Doctor</th><th>Total Appointments</th></tr></thead><tbody></tbody>
+        </table></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── TOAST ── -->
+<div id="toast"></div>
+
+<script>
+const API = 'http://localhost:8080/api';
+
+// ─── Utilities ───────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = type === 'error' ? '#c0392b' : type === 'success' ? '#27ae60' : '#2c3e50';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+async function api(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const ct = res.headers.get('content-type') || '';
+  return ct.includes('application/json') ? res.json() : res.text();
+}
+
+function statusBadge(s) {
+  const map = { Booked:'badge-booked', Completed:'badge-completed', Cancelled:'badge-cancelled' };
+  return `<span class="badge-pill ${map[s]||''}">${s}</span>`;
+}
+function payBadge(s) {
+  return `<span class="badge-pill ${s==='Paid'?'badge-paid':'badge-pending'}">${s}</span>`;
+}
+
+// ─── Navigation ──────────────────────────────────────────────
+const titles = {
+  dashboard:'Dashboard', patients:'Patient Management', doctors:'Doctor Management',
+  departments:'Departments', appointments:'Appointment Management',
+  emergency:'Emergency Appointments', prescriptions:'Prescription Tracking',
+  billing:'Billing & Payments', reports:'Reports & Analytics'
+};
+
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('#sidebar nav a').forEach(a => a.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelectorAll('#sidebar nav a')[Object.keys(titles).indexOf(name)].classList.add('active');
+  document.getElementById('page-title').textContent = titles[name];
+  const loaders = {
+    dashboard: loadDashboard, patients: loadPatients, doctors: loadDoctors,
+    departments: loadDepartments, appointments: () => { loadAppointments(); populateDropdowns(); },
+    emergency: loadEmergencies, prescriptions: loadPrescriptions,
+    billing: loadBilling, reports: loadReports
+  };
+  if (loaders[name]) loaders[name]();
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────
+async function loadDashboard() {
+  const today = new Date().toISOString().split('T')[0];
+  const [patients, doctors, todayApts, emergencies, revenue] = await Promise.all([
+    api('/patients'), api('/doctors'), api('/appointments/date/' + today),
+    api('/appointments/emergency'), api('/billing/reports/revenue')
+  ]);
+  document.getElementById('stat-patients').textContent  = patients.length;
+  document.getElementById('stat-doctors').textContent   = doctors.length;
+  document.getElementById('stat-today').textContent     = todayApts.length;
+  document.getElementById('stat-emergency').textContent = emergencies.length;
+  document.getElementById('stat-revenue').textContent   = '₹' + (revenue.totalRevenue||0).toLocaleString('en-IN');
+  document.getElementById('stat-pending').textContent   = '₹' + (revenue.pendingAmount||0).toLocaleString('en-IN');
+
+  const tbody = document.querySelector('#tbl-today tbody');
+  tbody.innerHTML = todayApts.length
+    ? todayApts.map(a => `<tr>
+        <td><strong>#${a.tokenNumber}</strong></td>
+        <td>${a.patientName||a.patientId}</td>
+        <td>${a.doctorName||a.doctorId}</td>
+        <td>${a.appointmentTime}</td>
+        <td>${statusBadge(a.status)}</td>
+        <td>${a.emergencyFlag==='Yes'?'<span class="badge-pill badge-emergency">🚨 YES</span>':'—'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No appointments today</td></tr>';
+}
+
+// ─── PATIENTS ────────────────────────────────────────────────
+async function loadPatients() {
+  const data = await api('/patients');
+  renderPatients(data);
+}
+
+function renderPatients(data) {
+  const tbody = document.querySelector('#tbl-patients tbody');
+  tbody.innerHTML = data.map(p => `<tr>
+    <td>${p.patientId}</td><td>${p.name}</td><td>${p.age}</td><td>${p.gender}</td>
+    <td>${p.phone}</td><td>${p.city||'—'}</td><td>${p.medicalHistory||'—'}</td>
+    <td>
+      <button class="btn btn-warning btn-sm" onclick='editPatient(${JSON.stringify(p)})'>✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deletePatient(${p.patientId})">🗑️</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No patients found</td></tr>';
+}
+
+async function searchPatients() {
+  const q = document.getElementById('pat-search').value.trim();
+  if (!q) { loadPatients(); return; }
+  const data = await api('/patients/search?q=' + encodeURIComponent(q));
+  renderPatients(data);
+}
+
+function editPatient(p) {
+  document.getElementById('pat-id').value      = p.patientId;
+  document.getElementById('pat-name').value    = p.name;
+  document.getElementById('pat-age').value     = p.age;
+  document.getElementById('pat-gender').value  = p.gender;
+  document.getElementById('pat-phone').value   = p.phone;
+  document.getElementById('pat-city').value    = p.city || '';
+  document.getElementById('pat-history').value = p.medicalHistory || '';
+  window.scrollTo(0, 0);
+}
+
+async function savePatient() {
+  const id = document.getElementById('pat-id').value;
+  const body = {
+    name: document.getElementById('pat-name').value,
+    age: +document.getElementById('pat-age').value,
+    gender: document.getElementById('pat-gender').value,
+    phone: document.getElementById('pat-phone').value,
+    city: document.getElementById('pat-city').value,
+    medicalHistory: document.getElementById('pat-history').value
+  };
+  if (!body.name || !body.age || !body.gender || !body.phone) { toast('Please fill required fields', 'error'); return; }
+  const msg = id ? await api('/patients/' + id, 'PUT', body) : await api('/patients', 'POST', body);
+  toast(msg, 'success'); clearPatientForm(); loadPatients();
+}
+
+async function deletePatient(id) {
+  if (!confirm('Delete this patient?')) return;
+  const msg = await api('/patients/' + id, 'DELETE');
+  toast(msg); loadPatients();
+}
+
+function clearPatientForm() {
+  ['pat-id','pat-name','pat-age','pat-gender','pat-phone','pat-city','pat-history']
+    .forEach(id => document.getElementById(id).value = '');
+}
+
+// ─── DOCTORS ─────────────────────────────────────────────────
+async function loadDoctors() {
+  await populateDeptDropdown('doc-dept');
+  const data = await api('/doctors');
+  renderDoctors(data);
+}
+
+function renderDoctors(data) {
+  const tbody = document.querySelector('#tbl-doctors tbody');
+  tbody.innerHTML = data.map(d => `<tr>
+    <td>${d.doctorId}</td><td>${d.name}</td><td>${d.specialization}</td>
+    <td>${d.departmentName||d.departmentId}</td><td>₹${d.consultationFee}</td>
+    <td>
+      <button class="btn btn-warning btn-sm" onclick='editDoctor(${JSON.stringify(d)})'>✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDoctor(${d.doctorId})">🗑️</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No doctors found</td></tr>';
+}
+
+async function searchDoctors() {
+  const q = document.getElementById('doc-search').value.trim();
+  if (!q) { loadDoctors(); return; }
+  const data = await api('/doctors/search?q=' + encodeURIComponent(q));
+  renderDoctors(data);
+}
+
+function editDoctor(d) {
+  document.getElementById('doc-id').value   = d.doctorId;
+  document.getElementById('doc-name').value = d.name;
+  document.getElementById('doc-spec').value = d.specialization;
+  document.getElementById('doc-dept').value = d.departmentId;
+  document.getElementById('doc-fee').value  = d.consultationFee;
+  window.scrollTo(0, 0);
+}
+
+async function saveDoctor() {
+  const id = document.getElementById('doc-id').value;
+  const body = {
+    name: document.getElementById('doc-name').value,
+    specialization: document.getElementById('doc-spec').value,
+    departmentId: +document.getElementById('doc-dept').value,
+    consultationFee: +document.getElementById('doc-fee').value
+  };
+  if (!body.name || !body.specialization || !body.departmentId) { toast('Please fill all fields', 'error'); return; }
+  const msg = id ? await api('/doctors/' + id, 'PUT', body) : await api('/doctors', 'POST', body);
+  toast(msg, 'success'); clearDoctorForm(); loadDoctors();
+}
+
+async function deleteDoctor(id) {
+  if (!confirm('Delete this doctor?')) return;
+  const msg = await api('/doctors/' + id, 'DELETE');
+  toast(msg); loadDoctors();
+}
+
+function clearDoctorForm() {
+  ['doc-id','doc-name','doc-spec','doc-dept','doc-fee'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ─── DEPARTMENTS ─────────────────────────────────────────────
+async function loadDepartments() {
+  const data = await api('/departments');
+  const tbody = document.querySelector('#tbl-departments tbody');
+  tbody.innerHTML = data.map(d => `<tr>
+    <td>${d.departmentId}</td><td>${d.departmentName}</td>
+    <td>
+      <button class="btn btn-warning btn-sm" onclick='editDept(${JSON.stringify(d)})'>✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDept(${d.departmentId})">🗑️</button>
+    </td>
+  </tr>`).join('');
+}
+
+function editDept(d) {
+  document.getElementById('dept-id').value   = d.departmentId;
+  document.getElementById('dept-name').value = d.departmentName;
+}
+
+async function saveDepartment() {
+  const id = document.getElementById('dept-id').value;
+  const body = { departmentName: document.getElementById('dept-name').value };
+  if (!body.departmentName) { toast('Enter department name', 'error'); return; }
+  const msg = id ? await api('/departments/' + id, 'PUT', body) : await api('/departments', 'POST', body);
+  toast(msg, 'success'); clearDeptForm(); loadDepartments();
+}
+
+async function deleteDept(id) {
+  if (!confirm('Delete this department?')) return;
+  const msg = await api('/departments/' + id, 'DELETE');
+  toast(msg); loadDepartments();
+}
+
+function clearDeptForm() {
+  document.getElementById('dept-id').value = '';
+  document.getElementById('dept-name').value = '';
+}
+
+// ─── APPOINTMENTS ─────────────────────────────────────────────
+async function populateDropdowns() {
+  await Promise.all([
+    populatePatientDropdown('apt-patient'),
+    populateDoctorDropdown('apt-doctor')
+  ]);
+}
+
+async function populatePatientDropdown(selectId) {
+  const data = await api('/patients');
+  const sel = document.getElementById(selectId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select Patient…</option>' +
+    data.map(p => `<option value="${p.patientId}">${p.name} (#${p.patientId})</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function populateDoctorDropdown(selectId) {
+  const data = await api('/doctors');
+  const sel = document.getElementById(selectId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select Doctor…</option>' +
+    data.map(d => `<option value="${d.doctorId}">${d.name} — ${d.specialization}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function populateDeptDropdown(selectId) {
+  const data = await api('/departments');
+  const sel = document.getElementById(selectId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Select Department…</option>' +
+    data.map(d => `<option value="${d.departmentId}">${d.departmentName}</option>`).join('');
+  if (cur) sel.value = cur;
+}
+
+async function loadAppointments() {
+  const data = await api('/appointments');
+  renderAppointments(data, 'tbl-appointments');
+}
+
+function renderAppointments(data, tblId) {
+  const tbody = document.querySelector(`#${tblId} tbody`);
+  tbody.innerHTML = data.map(a => `<tr>
+    <td>${a.appointmentId}</td>
+    <td><strong>#${a.tokenNumber}</strong></td>
+    <td>${a.patientName||a.patientId}</td>
+    <td>${a.doctorName||a.doctorId}</td>
+    <td>${a.appointmentDate}</td>
+    <td>${a.appointmentTime}</td>
+    <td>${statusBadge(a.status)}</td>
+    <td>${a.emergencyFlag==='Yes'?'<span class="badge-pill badge-emergency">🚨 YES</span>':'—'}</td>
+    <td style="display:flex;gap:4px;flex-wrap:wrap">
+      <button class="btn btn-success btn-sm" onclick="quickStatus(${a.appointmentId},'Completed')">✔</button>
+      <button class="btn btn-warning btn-sm" onclick="quickStatus(${a.appointmentId},'Cancelled')">✖</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteAppointment(${a.appointmentId})">🗑️</button>
+    </td>
+  </tr>`).join('') || `<tr><td colspan="9" style="text-align:center;color:var(--muted)">No appointments found</td></tr>`;
+}
+
+async function quickStatus(id, status) {
+  const msg = await api(`/appointments/${id}/status?status=${status}`, 'PATCH');
+  toast(msg, 'success'); loadAppointments();
+}
+
+async function filterByDate() {
+  const date = document.getElementById('apt-date-filter').value;
+  if (!date) { toast('Pick a date first', 'error'); return; }
+  const data = await api('/appointments/date/' + date);
+  renderAppointments(data, 'tbl-appointments');
+}
+
+async function saveAppointment() {
+  const id = document.getElementById('apt-id').value;
+  const body = {
+    patientId: +document.getElementById('apt-patient').value,
+    doctorId:  +document.getElementById('apt-doctor').value,
+    appointmentDate: document.getElementById('apt-date').value,
+    appointmentTime: document.getElementById('apt-time').value,
+    status:    document.getElementById('apt-status').value,
+    emergencyFlag: document.getElementById('apt-emergency').value
+  };
+  if (!body.patientId || !body.doctorId || !body.appointmentDate || !body.appointmentTime) {
+    toast('Please fill all fields', 'error'); return;
+  }
+  const msg = id ? await api('/appointments/' + id, 'PUT', body) : await api('/appointments', 'POST', body);
+  toast(msg, 'success'); clearAptForm(); loadAppointments();
+}
+
+async function deleteAppointment(id) {
+  if (!confirm('Delete this appointment?')) return;
+  const msg = await api('/appointments/' + id, 'DELETE');
+  toast(msg); loadAppointments();
+}
+
+function clearAptForm() {
+  ['apt-id','apt-patient','apt-doctor','apt-date','apt-time'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('apt-status').value = 'Booked';
+  document.getElementById('apt-emergency').value = 'No';
+}
+
+// ─── EMERGENCY ────────────────────────────────────────────────
+async function loadEmergencies() {
+  const data = await api('/appointments/emergency');
+  const tbody = document.querySelector('#tbl-emergency tbody');
+  tbody.innerHTML = data.map(a => `<tr>
+    <td>${a.appointmentId}</td>
+    <td><strong>#${a.tokenNumber}</strong></td>
+    <td>${a.patientName||a.patientId}</td>
+    <td>${a.doctorName||a.doctorId}</td>
+    <td>${a.appointmentDate}</td>
+    <td>${a.appointmentTime}</td>
+    <td>${statusBadge(a.status)}</td>
+    <td>
+      <button class="btn btn-success btn-sm" onclick="quickStatus(${a.appointmentId},'Completed')">✔ Done</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No emergencies</td></tr>';
+}
+
+// ─── PRESCRIPTIONS ────────────────────────────────────────────
+async function loadPrescriptions() {
+  const data = await api('/prescriptions');
+  renderPrescriptions(data);
+}
+
+function renderPrescriptions(data) {
+  const tbody = document.querySelector('#tbl-prescriptions tbody');
+  tbody.innerHTML = data.map(p => `<tr>
+    <td>${p.prescriptionId}</td><td>${p.appointmentId}</td>
+    <td>${p.medicineName}</td><td>${p.dosage}</td><td>${p.notes||'—'}</td>
+    <td>
+      <button class="btn btn-warning btn-sm" onclick='editRx(${JSON.stringify(p)})'>✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteRx(${p.prescriptionId})">🗑️</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted)">No prescriptions</td></tr>';
+}
+
+async function filterRxByApt() {
+  const id = document.getElementById('rx-apt-filter').value;
+  if (!id) { toast('Enter appointment ID', 'error'); return; }
+  const data = await api('/prescriptions/appointment/' + id);
+  renderPrescriptions(data);
+}
+
+function editRx(p) {
+  document.getElementById('rx-id').value     = p.prescriptionId;
+  document.getElementById('rx-apt').value    = p.appointmentId;
+  document.getElementById('rx-med').value    = p.medicineName;
+  document.getElementById('rx-dosage').value = p.dosage;
+  document.getElementById('rx-notes').value  = p.notes || '';
+  window.scrollTo(0, 0);
+}
+
+async function savePrescription() {
+  const id = document.getElementById('rx-id').value;
+  const body = {
+    appointmentId: +document.getElementById('rx-apt').value,
+    medicineName:  document.getElementById('rx-med').value,
+    dosage:        document.getElementById('rx-dosage').value,
+    notes:         document.getElementById('rx-notes').value
+  };
+  if (!body.appointmentId || !body.medicineName || !body.dosage) { toast('Fill required fields', 'error'); return; }
+  const msg = id ? await api('/prescriptions/' + id, 'PUT', body) : await api('/prescriptions', 'POST', body);
+  toast(msg, 'success'); clearRxForm(); loadPrescriptions();
+}
+
+async function deleteRx(id) {
+  if (!confirm('Delete prescription?')) return;
+  const msg = await api('/prescriptions/' + id, 'DELETE');
+  toast(msg); loadPrescriptions();
+}
+
+function clearRxForm() {
+  ['rx-id','rx-apt','rx-med','rx-dosage','rx-notes'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ─── BILLING ──────────────────────────────────────────────────
+async function loadBilling() {
+  const data = await api('/billing');
+  renderBilling(data);
+}
+
+function renderBilling(data) {
+  const tbody = document.querySelector('#tbl-billing tbody');
+  tbody.innerHTML = data.map(b => `<tr>
+    <td>${b.billId}</td><td>${b.appointmentId}</td>
+    <td>${b.patientName||'—'}</td><td>${b.doctorName||'—'}</td>
+    <td>${b.appointmentDate||'—'}</td>
+    <td>₹${b.amount.toLocaleString('en-IN')}</td>
+    <td>${payBadge(b.paymentStatus)}</td>
+    <td style="display:flex;gap:4px">
+      ${b.paymentStatus!=='Paid' ? `<button class="btn btn-success btn-sm" onclick="markPaid(${b.billId})">💰 Pay</button>` : ''}
+      <button class="btn btn-danger btn-sm" onclick="deleteBill(${b.billId})">🗑️</button>
+    </td>
+  </tr>`).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No bills</td></tr>';
+}
+
+async function filterBillsByStatus() {
+  const s = document.getElementById('bill-status-filter').value;
+  if (!s) { loadBilling(); return; }
+  const data = await api('/billing/status/' + s);
+  renderBilling(data);
+}
+
+async function markPaid(id) {
+  const msg = await api('/billing/' + id + '/pay', 'PATCH');
+  toast(msg, 'success'); loadBilling();
+}
+
+async function saveBill() {
+  const id = document.getElementById('bill-id').value;
+  const body = {
+    appointmentId: +document.getElementById('bill-apt').value,
+    amount:        +document.getElementById('bill-amount').value,
+    paymentStatus: document.getElementById('bill-status').value
+  };
+  if (!body.appointmentId || !body.amount) { toast('Fill required fields', 'error'); return; }
+  const msg = id ? await api('/billing/' + id, 'PUT', body) : await api('/billing', 'POST', body);
+  toast(msg, 'success'); clearBillForm(); loadBilling();
+}
+
+async function deleteBill(id) {
+  if (!confirm('Delete this bill?')) return;
+  const msg = await api('/billing/' + id, 'DELETE');
+  toast(msg); loadBilling();
+}
+
+function clearBillForm() {
+  ['bill-id','bill-apt','bill-amount'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('bill-status').value = 'Pending';
+}
+
+// ─── REPORTS ─────────────────────────────────────────────────
+async function loadReports() {
+  const [statusData, workload, revenue] = await Promise.all([
+    api('/appointments/reports/status'),
+    api('/appointments/reports/workload'),
+    api('/billing/reports/revenue')
+  ]);
+
+  document.getElementById('report-revenue-stats').innerHTML = `
+    <div class="stat-card green"><div class="label">Total Revenue Collected</div><div class="value">₹${(revenue.totalRevenue||0).toLocaleString('en-IN')}</div></div>
+    <div class="stat-card orange"><div class="label">Pending Dues</div><div class="value">₹${(revenue.pendingAmount||0).toLocaleString('en-IN')}</div></div>
+  `;
+
+  document.querySelector('#tbl-status-report tbody').innerHTML =
+    statusData.map(r => `<tr><td>${statusBadge(r.status||r.STATUS)}</td><td>${r.count||r.COUNT}</td></tr>`).join('');
+
+  document.querySelector('#tbl-workload tbody').innerHTML =
+    workload.map(r => `<tr><td>${r.doctor_name||r.DOCTOR_NAME}</td><td>${r.total_appointments||r.TOTAL_APPOINTMENTS}</td></tr>`).join('');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+document.getElementById('topbar-date').textContent = new Date().toLocaleDateString('en-IN', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+loadDashboard();
+</script>
+</body>
+</html>
